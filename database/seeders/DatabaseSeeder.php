@@ -35,5 +35,14 @@ class DatabaseSeeder extends Seeder
             'password' => bcrypt('password'),
             'role_name' => 'operator', // Set role_name to 'operator'
         ]);
+
+        // create user oprator
+        User::create([
+            'name' => 'Siti',
+            'username' => 'siti',
+            'email' => 'siti@gmail.com',
+            'password' => bcrypt('password'),
+            'role_name' => 'operator', // Set role_name to 'operator'
+        ]);
     }
 }
