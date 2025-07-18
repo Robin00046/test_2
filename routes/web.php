@@ -3,6 +3,7 @@
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Foundation\Application;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\KategoriController;
 use App\Http\Controllers\BarangMasukController;
 use App\Http\Controllers\SubKategoriController;
@@ -27,7 +28,12 @@ Route::middleware([
 });
 
 Route::middleware(['auth:sanctum', 'verified'])->group(function () {
+    Route::resource('barang-masuk', BarangMasukController::class);
+});
+
+Route::middleware(['auth:sanctum', 'verified', 'role:admin'])->group(function () {
     Route::resource('kategori', KategoriController::class);
     Route::resource('sub-kategori', SubKategoriController::class);
-    Route::resource('barang-masuk', BarangMasukController::class);
+    // user management routes
+    Route::resource('users', UserController::class)->except(['show']);
 });

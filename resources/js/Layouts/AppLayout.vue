@@ -8,7 +8,10 @@ import DropdownLink from "@/Components/DropdownLink.vue";
 import NavLink from "@/Components/NavLink.vue";
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 import BaseCard from "@/Components/reusable/BaseCard.vue";
+// import page
+import { usePage } from "@inertiajs/vue3";
 
+const $page = usePage();
 defineProps({
     title: String,
 });
@@ -35,21 +38,31 @@ const navigation = [
     },
     // kategori navigation
     {
-        name: "Kategori",
-        href: route("kategori.index"),
-        active: route().current("kategori.index"),
-    },
-    {
-        name: "Sub Kategori",
-        href: route("sub-kategori.index"),
-        active: route().current("sub-kategori.index"),
-    },
-    {
         name: "Barang Masuk",
         href: route("barang-masuk.index"),
         active: route().current("barang-masuk.index"),
     },
 ];
+
+if ($page.props.auth.user.role_name === "admin") {
+    navigation.push(
+        {
+            name: "Kategori",
+            href: route("kategori.index"),
+            active: route().current("kategori.index"),
+        },
+        {
+            name: "Sub Kategori",
+            href: route("sub-kategori.index"),
+            active: route().current("sub-kategori.index"),
+        },
+        {
+            name: "User Management",
+            href: route("users.index"),
+            active: route().current("users.index"),
+        }
+    );
+}
 const logout = () => {
     router.post(route("logout"));
 };

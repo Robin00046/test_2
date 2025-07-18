@@ -8,54 +8,42 @@ import { useForm } from "@inertiajs/vue3";
 import SecondaryButton from "@/Components/SecondaryButton.vue";
 import PrimaryButton from "@/Components/PrimaryButton.vue";
 import { usePage, router } from "@inertiajs/vue3";
+import { computed } from "vue";
+import Pagination from "@/Components/reusable/Pagination.vue";
 
 const props = defineProps({
-    columns: {
-        type: Array,
-        required: true,
-    },
-    ItemView: {
-        type: Array,
-        required: true,
-    },
-    items: {
-        type: Object,
-        required: true,
-    },
-    meta: {
-        type: Object,
-        required: true,
-    },
-    kategori: {
-        type: Array,
-        required: true,
-    },
+    items: Array,
+    kategori: Array,
+    filters: Object,
+    pagination: Object,
+    meta: Object,
 });
 
-const showModal = ref(false);
+const form = ref({
+    kategori_id: props.filters.kategori_id || "",
+    sub_kategori_id: props.filters.sub_kategori_id || "",
+    search: props.filters.search || "",
+});
 
-function openModal() {
-    showModal.value = true;
+function applyFilters() {
+    router.get(
+        "/barang-masuk",
+        {
+            kategori_id: form.value.kategori_id,
+            sub_kategori_id: form.value.sub_kategori_id,
+            search: form.value.search,
+        },
+        {
+            preserveState: true,
+            preserveScroll: true,
+        }
+    );
 }
 
-function closeModal() {
-    showModal.value = false;
-    editModal.value = false;
-    deleteModal.value = false;
-}
-
-const form = useForm({
-    kategori_id: "",
-    nama_sub_kategori: "",
-    batas_harga: "",
-});
-const form_put = useForm({
-    method: "PUT",
-    id: "",
-    kategori_id: "",
-    nama_sub_kategori: "",
-    batas_harga: "",
-});
+// 💡 computed agar aman dan reusable
+const subkategoris = computed(() =>
+    (props.kategori ?? []).flatMap((k) => k.sub_kategoris ?? [])
+);
 
 // const Field = [
 //     {
@@ -166,9 +154,67 @@ function confirmDelete() {
         </template>
 
         <!-- <h1 class="text-2xl font-bold mb-4"></h1> -->
-        <a href="/barang-masuk/create">
-            <PrimaryButton class="mb-4">Tambah Barang Masuk</PrimaryButton>
-        </a>
+        <div class="flex flex-wrap justify-between items-center gap-4 mb-4">
+            <!-- Tambah Barang -->
+            <a href="/barang-masuk/create">
+                <PrimaryButton class="mb-4">Tambah Barang Masuk</PrimaryButton>
+            </a>
+
+            <!-- Filter -->
+            <div class="flex flex-wrap gap-4 items-center">
+                <!-- Kategori -->
+                <div class="flex items-center gap-2">
+                    <label for="kategori" class="text-sm font-medium"
+                        >Kategori:</label
+                    >
+                    <select
+                        id="kategori"
+                        v-model="form.kategori_id"
+                        class="border border-gray-300 rounded-md p-2"
+                    >
+                        <option value="">-- Pilih Kategori --</option>
+                        <option
+                            v-for="kategori in props.kategori"
+                            :key="kategori.id"
+                            :value="kategori.id"
+                        >
+                            {{ kategori.nama_kategori }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Sub Kategori -->
+                <div class="flex items-center gap-2">
+                    <label for="sub_kategori" class="text-sm font-medium"
+                        >Sub Kategori:</label
+                    >
+                    <select
+                        v-model="form.sub_kategori_id"
+                        class="border border-gray-300 rounded-md p-2"
+                    >
+                        <option value="">-- Pilih Sub Kategori --</option>
+                        <option
+                            v-for="sub in subkategoris"
+                            :key="sub.id"
+                            :value="sub.id"
+                        >
+                            {{ sub.nama_sub_kategori }}
+                        </option>
+                    </select>
+                </div>
+
+                <!-- Search -->
+                <input
+                    v-model="form.search"
+                    type="text"
+                    placeholder="Search..."
+                    class="border border-gray-300 rounded-md p-2"
+                />
+
+                <!-- Tombol Filter -->
+                <PrimaryButton @click="applyFilters">Filter</PrimaryButton>
+            </div>
+        </div>
         <table class="min-w-full divide-y divide-gray-200 mt-4">
             <thead class="bg-gray-50">
                 <tr>
@@ -267,6 +313,7 @@ function confirmDelete() {
                 </template>
             </tbody>
         </table>
+        <Pagination :paginationLinks="pagination.links" :meta="meta" />
     </AppLayout>
 
     <DialogModal :show="showModal" @close="closeModal">

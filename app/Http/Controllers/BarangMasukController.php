@@ -20,16 +20,36 @@ class BarangMasukController extends Controller
     /**
      * Display a listing of the resource.
      */
-    public function index()
+    public function index(Request $request)
     {
-        $pagination = request()->input('pagination', 10);
+        $pagination = $request->input('pagination', 10);
+        // filter by tahung tanggal
+        $tanggal = $request->input('tanggal', null);
+
+        // filter by kategori
+        $kategoriId = $request->input('kategori_id', null);
+        // filter by subkategori
+        $subKategoriId = $request->input('sub_kategori_id', null);
+
+
 
         $barangMasuk = BarangMasuk::with(['user', 'subKategori', 'barang'])
+            ->when($tanggal, function ($query) use ($tanggal) {
+                return $query->whereDate('tanggal_masuk', $tanggal);
+            })
+            ->when($kategoriId, function ($query) use ($kategoriId) {
+                return $query->whereHas('subKategori.kategori', function ($q) use ($kategoriId) {
+                    $q->where('id', $kategoriId);
+                });
+            })
+            ->when($subKategoriId, function ($query) use ($subKategoriId) {
+                return $query->where('sub_kategori_id', $subKategoriId);
+            })
             ->orderBy('created_at', 'desc')
             ->paginate($pagination);
         // dd($barangMasuk->toArray());
         // Transformasi data dalam pagination
-        $barangMasuk->getCollection()->transform(function ($item) {
+        $itemsview = $barangMasuk->getCollection()->transform(function ($item) {
             return [
                 'id' => $item->id,
                 'tanggal' => $item->tanggal_masuk,
@@ -48,11 +68,24 @@ class BarangMasukController extends Controller
                 }),
             ];
         });
-
+        // dd($barangMasuk->toArray());
         // Jika hanya untuk debug:
         // dd($barangMasuk);
         return Inertia::render('BarangMasuk/Index', [
-            'items' => $barangMasuk->items(),
+            'items' => $itemsview,
+            'pagination' => $barangMasuk,
+            'meta' => [
+                'total' => $barangMasuk->total(),
+                'from' => $barangMasuk->firstItem(),
+                'to' => $barangMasuk->lastItem(),
+            ],
+            'filters' => [
+                'tanggal' => $tanggal,
+                'kategori_id' => $kategoriId,
+                'sub_kategori_id' => $subKategoriId,
+
+            ],
+            'kategori' => Kategori::with('subKategoris')->get(),
         ]);
     }
 
@@ -117,6 +150,7 @@ class BarangMasukController extends Controller
             'sub_kategori_id' => 'required|exists:sub_kategoris,id',
             'nomor_surat' => 'nullable|string|max:255',
             'batas_harga' => 'required|numeric|min:0',
+            'lampiran' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048', // Tambahkan validasi untuk lampiran
             'barang' => 'required|array',
             'barang.*.nama' => 'required|string|max:255',
             'barang.*.harga' => 'required|numeric|min:0',
@@ -125,6 +159,14 @@ class BarangMasukController extends Controller
             'barang.*.total' => 'nullable|numeric|min:0',
             'barang.*.expired' => 'nullable|date',
         ]);
+
+        // Jika ada lampiran, simpan file-nya
+        if ($request->hasFile('lampiran')) {
+            $lampiranPath = $request->file('lampiran')->store('lampiran', 'public');
+            $request->merge(['lampiran' => $lampiranPath]);
+        } else {
+            $request->merge(['lampiran' => null]);
+        }
         // dd($request->all());
         // Hentikan jika validasi awal gagal
         if ($validator->fails()) {
@@ -173,11 +215,13 @@ class BarangMasukController extends Controller
                     'updated_at' => now(),
                 ];
             })->toArray();
-
+            // dd($items);
             Barang::insert($items);
 
 
             DB::commit();
+            // Redirect to index with success message
+            return redirect()->route('barang-masuk.index')->with('success', __('Barang masuk berhasil ditambahkan.'));
         } catch (\Exception $e) {
             DB::rollBack();
             return back()->withErrors(['error' => $e->getMessage()]);
@@ -281,6 +325,7 @@ class BarangMasukController extends Controller
             'user_id' => 'required|exists:users,id',
             'sub_kategori_id' => 'required|exists:sub_kategoris,id',
             'nomor_surat' => 'nullable|string|max:255',
+            'lampiran' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:2048',
             'batas_harga' => 'required|numeric|min:0',
             'barang' => 'required|array',
             'barang.*.id' => 'nullable|exists:barangs,id', // Untuk update barang yang sudah ada
@@ -291,6 +336,14 @@ class BarangMasukController extends Controller
             'barang.*.total' => 'nullable|numeric|min:0',
             'barang.*.tanggal_expired' => 'nullable|date',
         ]);
+
+        // Jika ada lampiran, simpan file-nya
+        if ($request->hasFile('lampiran')) {
+            $lampiranPath = $request->file('lampiran')->store('lampiran', 'public');
+            $request->merge(['lampiran' => $lampiranPath]);
+        } else {
+            $request->merge(['lampiran' => null]);
+        }
 
         // Hentikan jika validasi awal gagal
         if ($validator->fails()) {
